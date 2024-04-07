@@ -331,19 +331,23 @@ fn traverse_directory(
                     }
 
                     if let Some(ref exclude_folders_str) = exclude_folders {
-                        let exclude_folders_list: Vec<&str> =
-                            exclude_folders_str.split(',').map(|s| s.trim()).collect();
-                        if let Some(parent_path) = path.parent() {
-                            let relative_parent_path =
-                                parent_path.strip_prefix(&canonical_root_path).unwrap();
-                            if exclude_folders_list
-                                .iter()
-                                .any(|folder| relative_parent_path.starts_with(folder))
-                            {
-                                return root;
-                            }
-                        }
-                    }
+    let exclude_folders_list: Vec<String> = exclude_folders_str.split(',')
+                                                                 .map(|s| s.trim().replace("\\", "/")) // Normalize folder paths
+                                                                 .collect();
+    if let Some(parent_path) = path.parent() {
+        let relative_parent_path = parent_path.strip_prefix(&canonical_root_path)
+                                              .unwrap_or_else(|_| parent_path)
+                                              .to_str().unwrap_or("")
+                                              .replace("\\", "/"); // Normalize the file path
+
+        // Check if the relative path of the file's parent contains any of the excluded folders
+        if exclude_folders_list.iter().any(|folder| relative_parent_path.contains(folder)) {
+            // Skip adding this file to the tree and files vector
+            return root;
+        }
+    }
+}
+
 
                     let code_bytes = fs::read(&path).expect("Failed to read file");
                     let code = String::from_utf8_lossy(&code_bytes);
